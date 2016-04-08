@@ -1,0 +1,160 @@
+<html>
+<head>
+    <style>
+@import url(http://fonts.googleapis.com/css?family=Lato);
+body{
+  background-color:#ecf0f1;
+  overflow:hidden;
+  font-family: 'Lato', sans-serif;
+}
+.postIt {
+    
+}
+.topBar {
+  z-index:1;
+  position:absolute;
+  width:180px;
+  height:30px;
+  background-color:#f39c12;
+}
+.topBar a {
+    position:absolute;
+    color: #999;
+    right: 0;
+    padding-left: 0px;
+    text-decoration: none;
+}
+.postText {
+  margin-top:30px;
+  position:absolute;
+  background-color:#f1c40f;
+  border-color:red;
+  width:180px;
+  height:140px;
+  padding: 0px;
+  overflow:hide;
+  font-size: 13px;
+}
+.postText:focus{
+  outline: 0;
+}
+
+#buttons
+{
+     position: fixed;
+     top: 0;
+     right: 0;
+}
+    </style>
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="jquery-ui.min.js"></script>
+</head>
+
+<body>
+
+<div id="canvas">
+
+</div>
+<div id="buttons">
+  <a href="javascript:NewBlankNote();">New Note</a>
+  <a href="#">...</a>
+</div>
+<script type="text/javascript">
+
+/*
+{
+drag: function() {
+    var offset = $(this).offset();
+    var xPos = offset.left;
+    var yPos = offset.top;
+    console.log('x: ' + xPos + 'y: ' + yPos);
+}
+}
+*/
+
+//var localData = {};
+
+function LoadData() {
+    $.ajax({
+        url: '/notes/',
+        dataType: 'json',
+        cache: false
+    }).done(function(data){
+        //localData = data['notes'];
+		for(i = 0; i < data['notes'].length; i++) {
+            nd = data['notes'][i];
+			NewNote(nd.id, nd.text, nd.pos);
+            styleText(nd.id);
+		}
+    }); 
+}
+LoadData();
+
+function NewBlankNote() {
+    hiId = 0;
+    for(var i = 0; i < $('.postIt').length; i++)
+        if($('.postIt')[i].id > hiId)
+            hiId = parseInt($('.postIt')[i].id);
+    pos = [50, 50];
+    NewNote(hiId + 1, 'Text...', pos);
+}
+
+function NewNote(id, text, pos) {
+    el = $('#canvas').append('<div class="postIt" id="' + id + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + text + '</div></div>');
+    $('#' + id).animate({top: pos[0], left: pos[1]});
+    
+    $(".postIt")
+        .draggable()
+        .click(function(){
+            if ( $(this).is('.ui-draggable-dragging') ) {
+                return;
+            }
+            $(this).draggable("disable");
+            $('#' + this.id + ' .postText').attr('contenteditable','true');
+        });
+     
+    $(".postText").blur(function() {
+        $(this).parent().draggable("enable");
+        $(this).attr('contenteditable','false');
+        saveState(false);
+    }); 
+}
+
+function DropNote(id) {
+    if($('#' + id + ' .postText').text() != 'Text...') {
+        x = confirm('Really delete?');
+        
+        if(x)
+            $('#' + id).remove();
+    }
+    else
+        $('#' + id).remove();
+}
+
+function styleText(id) {
+    /*inputText = $('#' + id + ' .postText').text();
+    replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
+    replacedText = inputText.replace(replacePattern1, '<a href="$1" target="_blank">(Link)</a>');
+    $('#' + id + ' .postText').text(replacedText);*/
+}
+
+function saveState(reTrigger=true){
+    var pData = {'notes': []};
+      for(var i = 0; i < $('.postIt').length; i++) {
+        pData['notes'][i] = ({'id': $('.postIt')[i].id, 'text': $('#' + $('.postIt')[i].id + ' .postText').text(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+      }
+      
+      $.ajax({
+          type: "POST",
+          url: '/notes/',
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify(pData)
+    });
+  if(reTrigger)
+    setTimeout(saveState, 10000);
+}
+setTimeout(saveState, 10000);
+</script>
+</body>
+</html>
