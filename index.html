@@ -7,6 +7,9 @@ body{
   overflow:hidden;
   font-family: 'Lato', sans-serif;
 }
+#scopes div {
+    float: left;
+}
 .postIt {
     
 }
@@ -35,6 +38,10 @@ body{
   overflow:hide;
   font-size: 13px;
 }
+.codeStyle {
+  font-family: Courier;
+  background-color: #ccc;
+}
 .postText:focus{
   outline: 0;
 }
@@ -51,7 +58,11 @@ body{
 </head>
 
 <body>
-
+<div id="scopes">
+  <div class="scope"><a href="?scope=1">1</a></div>
+  <div class="scope"><a href="?scope=2">2</a></div>
+  <div class="scope"><a href="?scope=3">3</a></div>
+</div>
 <div id="canvas">
 
 </div>
@@ -72,11 +83,9 @@ drag: function() {
 }
 */
 
-//var localData = {};
-
 function LoadData() {
     $.ajax({
-        url: '/notes/',
+        url: '/notes/' + SCOPE,
         dataType: 'json',
         cache: false
     }).done(function(data){
@@ -88,7 +97,7 @@ function LoadData() {
 		}
     }); 
 }
-LoadData();
+
 
 function NewBlankNote() {
     hiId = 0;
@@ -100,7 +109,7 @@ function NewBlankNote() {
 }
 
 function NewNote(id, text, pos) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + text + '</div></div>');
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + text + '</div></div>');
     $('#' + id).animate({top: pos[0], left: pos[1]});
     
     $(".postIt")
@@ -141,7 +150,7 @@ function styleText(id) {
 function saveState(reTrigger=true){
     var pData = {'notes': []};
       for(var i = 0; i < $('.postIt').length; i++) {
-        pData['notes'][i] = ({'id': $('.postIt')[i].id, 'text': $('#' + $('.postIt')[i].id + ' .postText').text(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+        pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'text': $('#' + $('.postIt')[i].id + ' .postText').text(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
       }
       
       $.ajax({
@@ -155,6 +164,22 @@ function saveState(reTrigger=true){
     setTimeout(saveState, 10000);
 }
 setTimeout(saveState, 10000);
+
+$.urlParam = function(name){
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results==null){
+       return null;
+    }
+    else{
+       return results[1] || 0;
+    }
+}
+
+var SCOPE = $.urlParam('scope');
+if(SCOPE == null)
+  SCOPE = 1;
+  
+LoadData();
 </script>
 </body>
 </html>

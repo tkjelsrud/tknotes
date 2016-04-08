@@ -2,11 +2,10 @@ import http.server
 import socketserver
 import pprint
 import json
+import re
 import urllib.parse
 from json import JSONEncoder
 import sys
-
-#from concept import *
 
 PORT = 8000
 DFILE = 'tknotes_data.json'
@@ -20,29 +19,47 @@ class Note:
         self.id = id;
         self.text = "aksjdhaskjdhasd"
         self.pos = [0, 0]
+        self.scope = 0
+        self.style = ""
+        self.props = {}
         
 class Memory:
     notes = []
     
     @staticmethod
     def fromJson(json):
-        Memory.notes = []
         for no in json['notes']:
             n = Note(no['id'])
             n.text = no['text']
             n.pos = no['pos']
-            Memory.notes.append(n)
+            n.scope = no.get('scope', 0)
+            n.style = no.get('style', "")
+            n.props = no.get('props', {})
+            
+            Memory.addOrUpdate(n)
+    
+    @staticmethod
+    def addOrUpdate(note):
+        for i in range(0, len(Memory.notes)- 1):
+            n = Memory.notes[i]
+            if int(n.id) == int(note.id) and int(n.scope) == int(note.scope):
+                Memory.notes[i] = note
+                return True
+        Memory.notes.append(note)   
+        return True        
             
     @staticmethod
     def toDisk():
         nData = {'notes': []}
+        w = 0
         for n in Memory.notes:
             nData['notes'].append(n)
+            w = w + 1
         
         f = open(DFILE, 'w')
         f.write(MyEncoder().encode(nData))
         f.close()
-        print('Wrote notes to ' + DFILE)
+        print('Wrote ' + str(w) + ' notes to ' + DFILE)
      
     @staticmethod
     def fromDisk():
@@ -96,9 +113,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):    
         try:
             if(self.path.startswith("/notes/")):
+                uAr = self.path.split("?")
+                ar = uAr[0].split("/")
+                scope = 1
+                
+                if int(ar[len(ar) - 1]) > 0:
+                    scope = int(ar[len(ar) - 1])
+                
                 nData = {'notes': []}
                 for n in Memory.notes:
-                    nData['notes'].append(n)
+                    if int(n.scope) == int(scope):
+                        nData['notes'].append(n)
                 self.respond(MyEncoder().encode(nData))
             
             if not self.responded:
