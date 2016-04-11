@@ -22,9 +22,12 @@ class Note:
         self.scope = 0
         self.style = ""
         self.props = {}
+    def __str__(self):
+        return str(self.id) + " " + str(self.scope) + " " + self.text
         
 class Memory:
     notes = []
+    scopes = []
     
     @staticmethod
     def fromJson(json):
@@ -37,29 +40,44 @@ class Memory:
             n.props = no.get('props', {})
             
             Memory.addOrUpdate(n)
+        
+        if 'scopes' in json:
+            for sc in json['scopes']:
+                print(str(sc))
+                Memory.scopes.append({'id': sc.get('id'), 'name': sc.get('name')})
     
     @staticmethod
     def addOrUpdate(note):
-        for i in range(0, len(Memory.notes)- 1):
+        for i in range(0, len(Memory.notes)):
             n = Memory.notes[i]
+            #print(str(n) + " vs " + str(note))
             if int(n.id) == int(note.id) and int(n.scope) == int(note.scope):
                 Memory.notes[i] = note
+                #print("Did update")
                 return True
+        #print("Did not find " + str(note))
+        #if len(Memory.notes) > 0:
+        #    print(" in " + str(Memory.notes[0]))
         Memory.notes.append(note)   
         return True        
             
     @staticmethod
     def toDisk():
-        nData = {'notes': []}
+        nData = {'notes': [], 'scopes': []}
         w = 0
+        ws = 0
         for n in Memory.notes:
             nData['notes'].append(n)
             w = w + 1
         
+        for n in Memory.scopes:
+            nData['scopes'].append(n)
+            ws = ws + 1
+        
         f = open(DFILE, 'w')
         f.write(MyEncoder().encode(nData))
         f.close()
-        print('Wrote ' + str(w) + ' notes to ' + DFILE)
+        print('Wrote notes:' + str(w) + ' scopes:' + str(ws) + ' to:' + DFILE)
      
     @staticmethod
     def fromDisk():
@@ -69,9 +87,9 @@ class Memory:
             f.close()
             Memory.fromJson(data)
             print('Read ' + str(len(Memory.notes)) + ' from disk')
-        except:
-            print("Error")
-
+        except Exception as e:
+            print("Error" + str(e))
+            
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         #self.request = request
@@ -124,6 +142,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 for n in Memory.notes:
                     if int(n.scope) == int(scope):
                         nData['notes'].append(n)
+                self.respond(MyEncoder().encode(nData))
+            
+            if(self.path.startswith("/scopes/")):
+                # Auth based on user?
+                nData = {'scopes': []}
+                for n in Memory.scopes:
+                    nData['scopes'].append(n)
                 self.respond(MyEncoder().encode(nData))
             
             if not self.responded:

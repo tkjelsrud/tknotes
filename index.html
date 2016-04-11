@@ -7,17 +7,45 @@ body{
   overflow:hidden;
   font-family: 'Lato', sans-serif;
 }
-#scopes div {
-    float: left;
+a {
+    text-decoration: none;
 }
+#scopes {
+    height: 32px;
+    border-bottom: 1px solid grey;
+}
+.scope {
+    float: left;
+    width: 200px;
+    height: 28px;
+    border-top: 1px solid grey;
+    border-left: 1px solid grey;
+    border-bottom: 1px solid grey;
+    padding: 2px;
+    background-color: #ccc;
+}
+.scope a {
+    width: 200px;
+}
+.scope.active {
+    border-bottom: 1px solid #eee;
+    background-color: #eee;
+}
+
 .postIt {
-    
+    position:absolute;
+    font-size: 12px;
+    width: 180px;
+    height: 140px;
+}
+.postIt.active {
+    border: 1px solid red;
 }
 .topBar {
   z-index:1;
   position:absolute;
   width:180px;
-  height:30px;
+  height:24px;
   background-color:#f39c12;
 }
 .topBar a {
@@ -25,10 +53,9 @@ body{
     color: #999;
     right: 0;
     padding-left: 0px;
-    text-decoration: none;
 }
 .postText {
-  margin-top:30px;
+  margin-top:24px;
   position:absolute;
   background-color:#f1c40f;
   border-color:red;
@@ -36,7 +63,6 @@ body{
   height:140px;
   padding: 0px;
   overflow:hide;
-  font-size: 13px;
 }
 .codeStyle {
   font-family: Courier;
@@ -55,14 +81,14 @@ body{
     </style>
     <script type="text/javascript" src="jquery.js"></script>
     <script type="text/javascript" src="jquery-ui.min.js"></script>
+    <script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/md5.js"></script>
 </head>
 
 <body>
 <div id="scopes">
-  <div class="scope"><a href="?scope=1">1</a></div>
-  <div class="scope"><a href="?scope=2">2</a></div>
-  <div class="scope"><a href="?scope=3">3</a></div>
-</div>
+  <div id="s1" class="scope" onclick="window.location='?s=1'"> </div>
+  <div id="s2" class="scope" onclick="window.location='?s=2'"> </div>
+  <div id="s3" class="scope" onclick="window.location='?s=3'"> </div>
 <div id="canvas">
 
 </div>
@@ -85,6 +111,16 @@ drag: function() {
 
 function LoadData() {
     $.ajax({
+        url: '/scopes/',
+        dataType: 'json',
+        cache: false
+    }).done(function(data){
+		for(i = 0; i < data['scopes'].length; i++) {
+            sd = data['scopes'][i];
+			$('#s' + sd.id).text(sd.name);
+		}
+    }); 
+    $.ajax({
         url: '/notes/' + SCOPE,
         dataType: 'json',
         cache: false
@@ -93,9 +129,9 @@ function LoadData() {
 		for(i = 0; i < data['notes'].length; i++) {
             nd = data['notes'][i];
 			NewNote(nd.id, nd.text, nd.pos);
-            styleText(nd.id);
 		}
     }); 
+    
 }
 
 
@@ -106,10 +142,11 @@ function NewBlankNote() {
             hiId = parseInt($('.postIt')[i].id);
     pos = [50, 50];
     NewNote(hiId + 1, 'Text...', pos);
+    CHANGE = true;
 }
 
-function NewNote(id, text, pos) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + text + '</div></div>');
+function NewNote(id, html, pos) {
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + html + '</div></div>');
     $('#' + id).animate({top: pos[0], left: pos[1]});
     
     $(".postIt")
@@ -120,19 +157,25 @@ function NewNote(id, text, pos) {
             }
             $(this).draggable("disable");
             $('#' + this.id + ' .postText').attr('contenteditable','true');
+            $(this).addClass('active');
         });
      
     $(".postText").blur(function() {
         $(this).parent().draggable("enable");
         $(this).attr('contenteditable','false');
+        $(this).parent().removeClass('active');
         saveState(false);
+        CHANGE = true;
+        styleText(this);
     }); 
+    
+    CHANGE = true;
 }
 
 function DropNote(id) {
     if($('#' + id + ' .postText').text() != 'Text...') {
         x = confirm('Really delete?');
-        
+        CHANGE = true;
         if(x)
             $('#' + id).remove();
     }
@@ -140,28 +183,33 @@ function DropNote(id) {
         $('#' + id).remove();
 }
 
-function styleText(id) {
-    /*inputText = $('#' + id + ' .postText').text();
-    replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
-    replacedText = inputText.replace(replacePattern1, '<a href="$1" target="_blank">(Link)</a>');
-    $('#' + id + ' .postText').text(replacedText);*/
+function styleText(elem) {
+    inputText = $(elem).html();
+    replacePattern1 = /\s(\b(https?):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
+    replacedText = inputText.replace(replacePattern1, '&nbsp;<a href="$1" target="_blank">(Link)</a>');
+    replacedText = replacedText.replace(/\n/g, "<br>");
+    $(elem).html(replacedText);
 }
 
 function saveState(reTrigger=true){
-    var pData = {'notes': []};
-      for(var i = 0; i < $('.postIt').length; i++) {
-        pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'text': $('#' + $('.postIt')[i].id + ' .postText').text(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
-      }
-      
-      $.ajax({
-          type: "POST",
-          url: '/notes/',
-          dataType: 'json',
-          contentType: 'application/json',
-          data: JSON.stringify(pData)
-    });
-  if(reTrigger)
-    setTimeout(saveState, 10000);
+    if(CHANGE) {
+        var pData = {'notes': []};
+        for(var i = 0; i < $('.postIt').length; i++) {
+            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+        }
+
+        $.ajax({
+            type: "POST",
+            url: '/notes/',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify(pData)
+        });
+        
+        CHANGE = false;
+    }
+    if(reTrigger)
+        setTimeout(saveState, 10000);
 }
 setTimeout(saveState, 10000);
 
@@ -175,11 +223,31 @@ $.urlParam = function(name){
     }
 }
 
-var SCOPE = $.urlParam('scope');
+var CHANGE = false;
+var SELECT = -1;
+var SCOPE = $.urlParam('s');
 if(SCOPE == null)
   SCOPE = 1;
+
+$("#s" + SCOPE).addClass('active');
   
 LoadData();
+
+// define a handler
+function doc_keyUp(e) {
+
+    // this would test for whichever key is 40 and the ctrl key at the same time
+    if (e.ctrlKey || e.keyCode == 9) {
+        if(SELECT > -1) {
+            $($('.postIt')[SELECT]).blur();
+            $($('.postIt')[SELECT]).removeClass('active');
+        }
+        SELECT = ((SELECT + 1) % $('.postIt').length);
+        $($('.postIt')[SELECT]).addClass('active');
+    }
+}
+// register the handler 
+document.addEventListener('keyup', doc_keyUp, false);
 </script>
 </body>
 </html>
