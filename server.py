@@ -22,6 +22,8 @@ class Note:
         self.scope = 0
         self.style = ""
         self.props = {}
+        self.delete = 0
+        
     def __str__(self):
         return str(self.id) + " " + str(self.scope) + " " + self.text
         
@@ -37,6 +39,7 @@ class Memory:
             n.pos = no['pos']
             n.scope = no.get('scope', 0)
             n.style = no.get('style', "")
+            n.delete = int(no.get('delete', 0))
             n.props = no.get('props', {})
             
             Memory.addOrUpdate(n)
@@ -67,8 +70,11 @@ class Memory:
         w = 0
         ws = 0
         for n in Memory.notes:
-            nData['notes'].append(n)
-            w = w + 1
+            if(n.delete == 0):
+                nData['notes'].append(n)
+                w = w + 1
+            else:
+                print("DELETE " + str(n.id))
         
         for n in Memory.scopes:
             nData['scopes'].append(n)
@@ -140,7 +146,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 
                 nData = {'notes': []}
                 for n in Memory.notes:
-                    if int(n.scope) == int(scope):
+                    if int(n.scope) == int(scope) and n.delete == 0:
                         nData['notes'].append(n)
                 self.respond(MyEncoder().encode(nData))
             

@@ -1,19 +1,53 @@
+<!DOCTYPE html>
 <html>
 <head>
     <style>
 @import url(http://fonts.googleapis.com/css?family=Lato);
-body{
-  background-color:#ecf0f1;
-  overflow:hidden;
-  font-family: 'Lato', sans-serif;
+html,body {
+    height:100%;
+    overflow:hidden;
+    font-family: 'Lato', sans-serif;
+    background-color: #f39c12;
+    background-image: url(45-degree-fabric-light.png);
+    margin: 0;
+    margin-top:2px;
 }
 a {
     text-decoration: none;
 }
+#canvas {
+    float: left;
+    width: 100%;
+    height: 100%;
+    background-color: #8a8780;
+    background-image: url(45-degree-fabric-light.png);
+}
 #scopes {
+    float: left;
+    width: 100%;
     height: 32px;
     border-bottom: 1px solid grey;
+    text-align: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    line-height: 24px;
 }
+#scopes:after {
+    position: absolute;
+    content: "";
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    border-bottom: 1px solid #AAA;
+    z-index: 1;
+}
+/*.scope:before {
+  box-shadow: 2px 2px 0 #ECECEC;
+}
+.scope:after {
+  box-shadow: -2px 2px 0 #ECECEC;
+}*/
 .scope {
     float: left;
     width: 200px;
@@ -21,8 +55,18 @@ a {
     border-top: 1px solid grey;
     border-left: 1px solid grey;
     border-bottom: 1px solid grey;
-    padding: 2px;
+    /*padding: 2px;*/
     background-color: #ccc;
+    background: linear-gradient(to bottom, #ECECEC 50%, #D1D1D1 100%);
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #FFF;
+    text-shadow: 0 1px #FFF;
+    margin: 0 0px;
+    padding: 0 4px;
+    border: 1px solid #AAA;
+    background: #ECECEC;
+    display: inline-block;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
 }
 .scope a {
     width: 200px;
@@ -30,6 +74,8 @@ a {
 .scope.active {
     border-bottom: 1px solid #eee;
     background-color: #eee;
+    background: #FFF;
+    color: #000;
 }
 
 .postIt {
@@ -86,9 +132,10 @@ a {
 
 <body>
 <div id="scopes">
-  <div id="s1" class="scope" onclick="window.location='?s=1'"> </div>
-  <div id="s2" class="scope" onclick="window.location='?s=2'"> </div>
-  <div id="s3" class="scope" onclick="window.location='?s=3'"> </div>
+  <div id="s1" class="scope droppable" dataScope="1" onclick="window.location='?s=1'"> </div>
+  <div id="s2" class="scope droppable" dataScope="2" onclick="window.location='?s=2'"> </div>
+  <div id="s3" class="scope droppable" dataScope="3" onclick="window.location='?s=3'"> </div>
+</div>
 <div id="canvas">
 
 </div>
@@ -97,17 +144,10 @@ a {
   <a href="#">...</a>
 </div>
 <script type="text/javascript">
-
-/*
-{
-drag: function() {
-    var offset = $(this).offset();
-    var xPos = offset.left;
-    var yPos = offset.top;
-    console.log('x: ' + xPos + 'y: ' + yPos);
-}
-}
-*/
+var GRID = [20, 20];
+var CHANGE = false;
+var SELECT = -1;
+var EDIT = false;
 
 function LoadData() {
     $.ajax({
@@ -140,17 +180,21 @@ function NewBlankNote() {
     for(var i = 0; i < $('.postIt').length; i++)
         if($('.postIt')[i].id > hiId)
             hiId = parseInt($('.postIt')[i].id);
-    pos = [50, 50];
+    pos = [100, 100];
     NewNote(hiId + 1, 'Text...', pos);
     CHANGE = true;
 }
 
 function NewNote(id, html, pos) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + html + '</div></div>');
-    $('#' + id).animate({top: pos[0], left: pos[1]});
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + html + '</div></div>');
     
-    $(".postIt")
-        .draggable()
+    x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
+    y = parseInt(pos[1]) - (parseInt(pos[1]) % GRID[1]);
+    
+    $('#' + id).animate({top: x, left: y});
+    
+    $('#' + id)
+        .draggable({ grid: GRID })
         .click(function(){
             if ( $(this).is('.ui-draggable-dragging') ) {
                 return;
@@ -158,29 +202,41 @@ function NewNote(id, html, pos) {
             $(this).draggable("disable");
             $('#' + this.id + ' .postText').attr('contenteditable','true');
             $(this).addClass('active');
-        });
+            EDIT = true;
+    });
      
-    $(".postText").blur(function() {
+    $('#' + id + " .postText").blur(function() {
         $(this).parent().draggable("enable");
         $(this).attr('contenteditable','false');
         $(this).parent().removeClass('active');
         saveState(false);
         CHANGE = true;
+        EDIT = false;
         styleText(this);
     }); 
     
-    CHANGE = true;
+    /*$("#s1").droppable();
+    $("#s1").droppable({
+    drop: function( e, ui ) {
+        //event.offsetX
+        console.log("drop");
+        e.preventDefault();
+        return false;
+    }*/
+//};
+    
+    //CHANGE = true;
 }
 
 function DropNote(id) {
     if($('#' + id + ' .postText').text() != 'Text...') {
         x = confirm('Really delete?');
-        CHANGE = true;
-        if(x)
-            $('#' + id).remove();
+        if(!x)
+            return;
     }
-    else
-        $('#' + id).remove();
+    CHANGE=true;
+    $('#' + id).hide();
+    $('#' + id).attr('dataDelete', '1');
 }
 
 function styleText(elem) {
@@ -191,11 +247,11 @@ function styleText(elem) {
     $(elem).html(replacedText);
 }
 
-function saveState(reTrigger=true){
+function saveState(reTrigger){
     if(CHANGE) {
-        var pData = {'notes': []};
+        var pData = {'scope': SCOPE, 'notes': []};
         for(var i = 0; i < $('.postIt').length; i++) {
-            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
         }
 
         $.ajax({
@@ -208,10 +264,10 @@ function saveState(reTrigger=true){
         
         CHANGE = false;
     }
-    if(reTrigger)
-        setTimeout(saveState, 10000);
+    if(reTrigger != false)
+        setTimeout(saveState, 1000);
 }
-setTimeout(saveState, 10000);
+setTimeout(saveState, 1000);
 
 $.urlParam = function(name){
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
@@ -223,21 +279,26 @@ $.urlParam = function(name){
     }
 }
 
-var CHANGE = false;
-var SELECT = -1;
+
+
+
 var SCOPE = $.urlParam('s');
 if(SCOPE == null)
   SCOPE = 1;
 
 $("#s" + SCOPE).addClass('active');
-  
+
+ 
 LoadData();
 
-// define a handler
-function doc_keyUp(e) {
-
-    // this would test for whichever key is 40 and the ctrl key at the same time
-    if (e.ctrlKey || e.keyCode == 9) {
+function keyUp(e) {
+    if(EDIT) {
+        e.stopPropagation();
+        return;
+    }
+        
+    if(e.keyCode == 9) {
+        // TAB
         if(SELECT > -1) {
             $($('.postIt')[SELECT]).blur();
             $($('.postIt')[SELECT]).removeClass('active');
@@ -245,9 +306,38 @@ function doc_keyUp(e) {
         SELECT = ((SELECT + 1) % $('.postIt').length);
         $($('.postIt')[SELECT]).addClass('active');
     }
+    if(e.keyCode == 78) {
+        // n
+        NewBlankNote();
+    }
+    if(e.keyCode == 8) {
+        // Backspace
+    }
 }
 // register the handler 
-document.addEventListener('keyup', doc_keyUp, false);
+document.addEventListener('keyup', keyUp, false);
+
+// dropping note on different tab/scope
+$("#canvas").droppable({
+    drop: function( e, ui ) {
+        CHANGE = true;
+        if(e.clientY < ($('#scopes').offset().top + $('#scopes').outerHeight())) {
+            for(var i = 0; i < $('#scopes').children().length; i++) {
+                ch = $('#scopes').children()[i];
+                fromX = $(ch).offset().left;
+                toX = fromX + $(ch).outerWidth();
+                if(e.clientX > fromX && e.clientX < toX) {
+                    $(ui.draggable[0]).attr('dataScope', $(ch).attr("dataScope"));
+                    $(ui.draggable[0]).hide();
+                    CHANGE = true;
+                    saveState(false);
+                    return;
+                }
+            }
+        }
+          
+    }
+});
 </script>
 </body>
 </html>
