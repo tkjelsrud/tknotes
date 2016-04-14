@@ -86,6 +86,7 @@ a {
 }
 .postIt.active {
     border: 1px solid red;
+    z-index: 999;
 }
 .topBar {
   z-index:1;
@@ -95,10 +96,11 @@ a {
   background-color:#f39c12;
 }
 .topBar a {
-    position:absolute;
+    float: right;
     color: #999;
     right: 0;
-    padding-left: 0px;
+    padding-left: 8px;
+    padding-right: 0px;
 }
 .postText {
   margin-top:24px;
@@ -108,8 +110,11 @@ a {
   width:180px;
   height:140px;
   padding: 0px;
-  overflow:hide;
+  overflow: hidden;
+  word-wrap: break-word;
 }
+.postText:first-line {font-weight:bold;}
+
 .codeStyle {
   font-family: Courier;
   background-color: #ccc;
@@ -186,7 +191,7 @@ function NewBlankNote() {
 }
 
 function NewNote(id, html, pos) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a></div><div class="postText">' + html + '</div></div>');
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
     
     x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
     y = parseInt(pos[1]) - (parseInt(pos[1]) % GRID[1]);
@@ -201,6 +206,7 @@ function NewNote(id, html, pos) {
             }
             $(this).draggable("disable");
             $('#' + this.id + ' .postText').attr('contenteditable','true');
+            $('#' + this.id + ' .postText').css('height','auto');
             $(this).addClass('active');
             EDIT = true;
     });
@@ -208,6 +214,7 @@ function NewNote(id, html, pos) {
     $('#' + id + " .postText").blur(function() {
         $(this).parent().draggable("enable");
         $(this).attr('contenteditable','false');
+        $(this).css('height','');
         $(this).parent().removeClass('active');
         saveState(false);
         CHANGE = true;
@@ -237,6 +244,12 @@ function DropNote(id) {
     CHANGE=true;
     $('#' + id).hide();
     $('#' + id).attr('dataDelete', '1');
+}
+
+function ExportNote(id) {
+    text = $('#' + id + ' .postText').text();
+    uc = "data:text/plain;charset=utf-8," + encodeURIComponent(text);
+    newWindow = window.open(uc, 'Nedlasting');
 }
 
 function styleText(elem) {
@@ -328,7 +341,7 @@ $("#canvas").droppable({
                 toX = fromX + $(ch).outerWidth();
                 if(e.clientX > fromX && e.clientX < toX) {
                     $(ui.draggable[0]).attr('dataScope', $(ch).attr("dataScope"));
-                    $(ui.draggable[0]).hide();
+                    $(ui.draggable[0]).fadeOut();
                     CHANGE = true;
                     saveState(false);
                     return;
