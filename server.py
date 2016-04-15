@@ -23,6 +23,7 @@ class Note:
         self.style = ""
         self.props = {}
         self.delete = 0
+        self.nclass = ""
         
     def __str__(self):
         return str(self.id) + " " + str(self.scope) + " " + self.text
@@ -40,6 +41,7 @@ class Memory:
             n.scope = no.get('scope', 0)
             n.style = no.get('style', "")
             n.delete = int(no.get('delete', 0))
+            n.nclass = no.get('nclass', "")
             n.props = no.get('props', {})
             
             Memory.addOrUpdate(n)

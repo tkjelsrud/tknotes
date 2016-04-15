@@ -82,18 +82,27 @@ a {
     position:absolute;
     font-size: 12px;
     width: 180px;
-    height: 140px;
+    height: 164px;
+    box-shadow: 4px 4px 2px #888888;
 }
 .postIt.active {
     border: 1px solid red;
     z-index: 999;
 }
+
+.postIt.style2 .topBar {
+    background-color: #0066ff;
+}
+.postIt.style2 .postText {
+   background-color: #8cb3d9;
+}
+
 .topBar {
   z-index:1;
   position:absolute;
   width:180px;
   height:24px;
-  background-color:#f39c12;
+  background-color: #f39c12;
 }
 .topBar a {
     float: right;
@@ -114,6 +123,7 @@ a {
   word-wrap: break-word;
 }
 .postText:first-line {font-weight:bold;}
+
 
 .codeStyle {
   font-family: Courier;
@@ -137,9 +147,7 @@ a {
 
 <body>
 <div id="scopes">
-  <div id="s1" class="scope droppable" dataScope="1" onclick="window.location='?s=1'"> </div>
-  <div id="s2" class="scope droppable" dataScope="2" onclick="window.location='?s=2'"> </div>
-  <div id="s3" class="scope droppable" dataScope="3" onclick="window.location='?s=3'"> </div>
+  
 </div>
 <div id="canvas">
 
@@ -162,7 +170,7 @@ function LoadData() {
     }).done(function(data){
 		for(i = 0; i < data['scopes'].length; i++) {
             sd = data['scopes'][i];
-			$('#s' + sd.id).text(sd.name);
+            AddOrUpdateScope(sd.id, sd.name);
 		}
     }); 
     $.ajax({
@@ -173,12 +181,18 @@ function LoadData() {
         //localData = data['notes'];
 		for(i = 0; i < data['notes'].length; i++) {
             nd = data['notes'][i];
-			NewNote(nd.id, nd.text, nd.pos);
+			NewNote(nd.id, nd.text, nd.pos, nd.nclass);
 		}
     }); 
     
 }
 
+function AddOrUpdateScope(sid, sname) {
+    $('#scopes').append("<div id=\"s" + sid + "\" class=\"scope droppable\" dataScope=\"" + sid + "\" onclick=\"window.location='?s=" + sid + "'\">" + sname + "</div>");
+    
+    if(sid == SCOPE)
+        $("#s" + SCOPE).addClass('active');
+}
 
 function NewBlankNote() {
     hiId = 0;
@@ -190,9 +204,9 @@ function NewBlankNote() {
     CHANGE = true;
 }
 
-function NewNote(id, html, pos) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
-    
+function NewNote(id, html, pos, nclass) {
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" dataClass="' + nclass + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
+    //console.log($('#' + id));
     x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
     y = parseInt(pos[1]) - (parseInt(pos[1]) % GRID[1]);
     
@@ -222,17 +236,8 @@ function NewNote(id, html, pos) {
         styleText(this);
     }); 
     
-    /*$("#s1").droppable();
-    $("#s1").droppable({
-    drop: function( e, ui ) {
-        //event.offsetX
-        console.log("drop");
-        e.preventDefault();
-        return false;
-    }*/
-//};
-    
-    //CHANGE = true;
+    if(nclass)
+        $('#' + id).addClass(nclass);
 }
 
 function DropNote(id) {
@@ -264,7 +269,7 @@ function saveState(reTrigger){
     if(CHANGE) {
         var pData = {'scope': SCOPE, 'notes': []};
         for(var i = 0; i < $('.postIt').length; i++) {
-            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
         }
 
         $.ajax({
@@ -292,15 +297,9 @@ $.urlParam = function(name){
     }
 }
 
-
-
-
 var SCOPE = $.urlParam('s');
 if(SCOPE == null)
   SCOPE = 1;
-
-$("#s" + SCOPE).addClass('active');
-
  
 LoadData();
 
