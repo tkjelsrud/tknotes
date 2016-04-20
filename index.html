@@ -8,7 +8,7 @@ html,body {
     overflow:hidden;
     font-family: 'Lato', sans-serif;
     background-color: #f39c12;
-    background-image: url(45-degree-fabric-light.png);
+    background-image: url(img/45-degree-fabric-light.png);
     margin: 0;
     margin-top:2px;
 }
@@ -20,7 +20,7 @@ a {
     width: 100%;
     height: 100%;
     background-color: #8a8780;
-    background-image: url(45-degree-fabric-light.png);
+    background-image: url(img/45-degree-fabric-light.png);
 }
 #scopes {
     float: left;
@@ -83,7 +83,7 @@ a {
     font-size: 12px;
     width: 180px;
     height: 164px;
-    box-shadow: 4px 4px 2px #888888;
+    box-shadow: 4px 4px 2px #777;
 }
 .postIt.active {
     border: 1px solid red;
@@ -140,9 +140,10 @@ a {
      right: 0;
 }
     </style>
-    <script type="text/javascript" src="jquery.js"></script>
-    <script type="text/javascript" src="jquery-ui.min.js"></script>
-    <script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/md5.js"></script>
+    <script type="text/javascript" src="js/jquery.js"></script>
+    <script type="text/javascript" src="js/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="js/rollups/aes.js"></script>
+    <!--script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/md5.js"></script-->
 </head>
 
 <body>
@@ -181,7 +182,8 @@ function LoadData() {
         //localData = data['notes'];
 		for(i = 0; i < data['notes'].length; i++) {
             nd = data['notes'][i];
-			NewNote(nd.id, nd.text, nd.pos, nd.nclass);
+            sessionStorage.setItem(SCOPE + '_' + nd.id, JSON.stringify(nd));
+			NewNote(nd.id, nd.text, nd.pos, nd.secured, nd.nclass, nd.props);
 		}
     }); 
     
@@ -204,13 +206,30 @@ function NewBlankNote() {
     CHANGE = true;
 }
 
-function NewNote(id, html, pos, nclass) {
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" dataClass="' + nclass + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
+function NewNote(id, html, pos, secure, nclass, props) {
+    // Use a local database or array
+    //
+    //
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" dataSecure="' + secure + '" dataClass="' + nclass + '" dataProps="' + JSON.stringify(props) + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
+    
     //console.log($('#' + id));
     x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
     y = parseInt(pos[1]) - (parseInt(pos[1]) % GRID[1]);
     
     $('#' + id).animate({top: x, left: y});
+    
+    if(secure == 1) {
+        // Show security icon and decrypt function: allow selection of algo, salt (local file?) and passphrase
+        // Hide encrypted content
+        //
+        // var encrypted = CryptoJS.AES.encrypt("Message", "Secret Passphrase"); 
+        // var decrypted = CryptoJS.AES.decrypt(encrypted, "Secret Passphrase");
+        // decrypted.toString(CryptoJS.enc.Utf8);
+        //
+        
+        $('#' + id + " .topBar").append("<a href=\"javascript:ToggleCrypt(" + id + ");\">&#128274;</a>");
+        $('#' + id + ' .postText').css('color', '#CCC');
+    }
     
     $('#' + id)
         .draggable({ grid: GRID })
@@ -238,6 +257,30 @@ function NewNote(id, html, pos, nclass) {
     
     if(nclass)
         $('#' + id).addClass(nclass);
+}
+
+function ToggleCrypt(id) {
+    if($('#' + id).attr('decrypt') == "1") {
+        var text = $('#' + id + ' .postText').text();
+        
+        var pw = prompt("Encrypt - please enter passphrase", "");
+
+        if(pw != null) {
+            var ntext = CryptoJS.AES.encrypt(text, pw).toString();
+            $('#' + id + ' .postText').text(ntext);
+            $('#' + id).attr('decrypt', '0');
+            $('#' + id + ' .postText').css('color', '#CCC');
+        }
+    }
+    else {
+        var pw = prompt("Decrypt - please enter passphrase", "");
+        if(pw != null) {
+            var decrypted = CryptoJS.AES.decrypt($('#' + id + ' .postText').text(), pw);
+            $('#' + id + ' .postText').text(decrypted.toString(CryptoJS.enc.Utf8));
+            $('#' + id).attr('decrypt', '1');
+            $('#' + id + ' .postText').css('color', '#000');
+        }
+    }
 }
 
 function DropNote(id) {
@@ -269,7 +312,7 @@ function saveState(reTrigger){
     if(CHANGE) {
         var pData = {'scope': SCOPE, 'notes': []};
         for(var i = 0; i < $('.postIt').length; i++) {
-            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'secured': $($('.postIt')[i]).attr('dataSecure'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'props': $($('.postIt')[i]).attr('dataProps'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
         }
 
         $.ajax({

@@ -1,4 +1,6 @@
 import http.server
+#import SimpleHTTPServer #BaseHTTPServer
+import ssl
 import socketserver
 import pprint
 import json
@@ -6,6 +8,14 @@ import re
 import urllib.parse
 from json import JSONEncoder
 import sys
+
+
+"""
+
+
+
+
+"""
 
 PORT = 8000
 DFILE = 'tknotes_data.json'
@@ -24,6 +34,8 @@ class Note:
         self.props = {}
         self.delete = 0
         self.nclass = ""
+        self.events = []
+        self.secured = 0
         
     def __str__(self):
         return str(self.id) + " " + str(self.scope) + " " + self.text
@@ -43,6 +55,7 @@ class Memory:
             n.delete = int(no.get('delete', 0))
             n.nclass = no.get('nclass', "")
             n.props = no.get('props', {})
+            n.secured = no.get('secured', 0)
             
             Memory.addOrUpdate(n)
         
@@ -152,7 +165,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         nData['notes'].append(n)
                 self.respond(MyEncoder().encode(nData))
             
-            if(self.path.startswith("/scopes/")):
+            elif(self.path.startswith("/scopes/")):
                 # Auth based on user?
                 nData = {'scopes': []}
                 for n in Memory.scopes:
@@ -169,6 +182,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 Memory.fromDisk()
 httpd = socketserver.TCPServer(("", PORT), Handler)
+
+"""
+httpd = BaseHTTPServer.HTTPServer(('localhost', 4443), SimpleHTTPServer.SimpleHTTPRequestHandler)
+httpd.socket = ssl.wrap_socket (httpd.socket, certfile='path/to/localhost.pem', server_side=True)
+httpd.serve_forever()
+"""
+
 
 print("serving at port", PORT)
 httpd.serve_forever()
