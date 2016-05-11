@@ -80,14 +80,18 @@ a {
 
 .postIt {
     position:absolute;
+    float: left;
     font-size: 12px;
     width: 180px;
-    height: 164px;
+    height: 160px;
     box-shadow: 4px 4px 2px #777;
 }
 .postIt.active {
     border: 1px solid red;
     z-index: 999;
+}
+.postIt.min {
+    height: 20px;
 }
 
 .postIt.style2 .topBar {
@@ -96,12 +100,18 @@ a {
 .postIt.style2 .postText {
    background-color: #8cb3d9;
 }
+.postIt.style3 .topBar {
+    background-color: #DC6904;
+}
+.postIt.style3 .postText {
+    background-color: #CA5E0A;
+}
 
 .topBar {
   z-index:1;
-  position:absolute;
-  width:180px;
-  height:24px;
+  /*position:absolute;*/
+  width: 100%;
+  height: 20px;
   background-color: #f39c12;
 }
 .topBar a {
@@ -112,18 +122,39 @@ a {
     padding-right: 0px;
 }
 .postText {
-  margin-top:24px;
-  position:absolute;
+    padding: 0px;
+  position:relative;
   background-color:#f1c40f;
   border-color:red;
-  width:180px;
-  height:140px;
-  padding: 0px;
+  width: 100%;
+  height: 140px;
+  
   overflow: hidden;
   word-wrap: break-word;
 }
-.postText:first-line {font-weight:bold;}
+.postText:first-line {
+    font-weight:bold;
+}
 
+}
+
+.postText.min {
+    top: -20px;
+    z-index: 999;
+    background: 0; !important
+    left: 20px;
+    height: 16px;
+}
+
+.postIt .corner {
+    width: 8px;
+    height: 8px;
+    background-color: #CCC;
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    cursor: nw-resize;
+}
 
 .codeStyle {
   font-family: Courier;
@@ -162,6 +193,7 @@ var GRID = [20, 20];
 var CHANGE = false;
 var SELECT = -1;
 var EDIT = false;
+var PROPS = {};
 
 function LoadData() {
     $.ajax({
@@ -179,13 +211,13 @@ function LoadData() {
         dataType: 'json',
         cache: false
     }).done(function(data){
-        //localData = data['notes'];
 		for(i = 0; i < data['notes'].length; i++) {
             nd = data['notes'][i];
             sessionStorage.setItem(SCOPE + '_' + nd.id, JSON.stringify(nd));
-			NewNote(nd.id, nd.text, nd.pos, nd.secured, nd.nclass, nd.props);
+            PROPS[nd.id] = nd.props;
+			NewNote(nd.id, nd.text, nd.pos, nd.secured, nd.nclass);
 		}
-    }); 
+    });
     
 }
 
@@ -206,11 +238,12 @@ function NewBlankNote() {
     CHANGE = true;
 }
 
-function NewNote(id, html, pos, secure, nclass, props) {
+function NewNote(id, html, pos, secure, nclass) {
     // Use a local database or array
     //
     //
-    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" dataSecure="' + secure + '" dataClass="' + nclass + '" dataProps="' + JSON.stringify(props) + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a><a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText">' + html + '</div></div>');
+    el = $('#canvas').append('<div class="postIt" id="' + id + '" dataScope="' + SCOPE + '" dataSecure="' + secure + '" dataClass="' + nclass + '" class="draggable"><div class="topBar">' + id + '<a href="javascript:DropNote(' + id + ')">&#10006;</a>' +
+          '<a href="javascript:ExportNote(' + id + ')">&#x1f4be;</a></div><div class="postText ui-widget-content">' + html + '</div><div class="corner draggable">&nbsp;</div></div>');
     
     //console.log($('#' + id));
     x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
@@ -233,21 +266,66 @@ function NewNote(id, html, pos, secure, nclass, props) {
     
     $('#' + id)
         .draggable({ grid: GRID })
+        .dblclick(function(event) {
+            // Support doubleclick = minimize
+            if($('#' + this.id).hasClass('min')) {
+                $('#' + this.id).removeClass('min');
+                $('#' + this.id + ' .postText').removeClass('min');
+                PROPS[this.id]['min'] = 0;
+            }
+            else {
+                $('#' + this.id).addClass('min');
+                $('#' + this.id + ' .postText').addClass('min');
+                PROPS[this.id]['min'] = 1;
+            }
+            CHANGE = true;
+        })
         .click(function(){
+            // TODO: Stop drag/resize to trigger this
+            //
             if ( $(this).is('.ui-draggable-dragging') ) {
                 return;
             }
-            $(this).draggable("disable");
-            $('#' + this.id + ' .postText').attr('contenteditable','true');
-            $('#' + this.id + ' .postText').css('height','auto');
-            $(this).addClass('active');
-            EDIT = true;
+            if($(event.toElement).attr('class') != 'topBar') {
+                $(this).draggable("disable");
+                $('#' + this.id + ' .postText').attr('contenteditable','true');
+                $(this).addClass('active');
+                EDIT = true;
+            }
+        });
+    
+    $('#' + id + ' .corner')
+            .draggable({ grid: GRID, 
+                /*start:function(ev, ui) {
+                    $(this).css("cursor","nw-resize");
+                },*/
+                drag:function(ev, ui){
+                //console.log($(this).css('top') + $(this).css('height') + "/" + $(this).css('left') + $(this).css('width'));
+                h = parseInt($(this).css('top')) + parseInt($(this).css('height'));
+                w = parseInt($(this).css('left')) + parseInt($(this).css('width'));
+                
+                //console.log($('#' + $($(this).parent().id + ' .postText')));
+                $(this).parent().css('height', h + 'px');
+                $(this).parent().css('width', w + 'px');
+                $('#' + $(this).parent().attr('id') + ' .postText').css('height', (h - 20) + 'px');
+                //console.log($('#' + $(this).parent().id() + ' .postText'));
+                //console.log($('#' + $(this).parent().id() + ' .postText').css('height'));
+                //$($(this).parent().id + ' .postText').css('width', w + 'px');
+            } })
+            .click(function() {
+                console.log("hmm");
+            if ( $(this).is('.ui-draggable-dragging') ) {
+                console.log("Move stuff");
+                $(this).parent().css('bottom', $(this).css('bottom'));
+                $(this).parent().css('right', $(this).css('right'));
+                return;
+            }
     });
      
     $('#' + id + " .postText").blur(function() {
         $(this).parent().draggable("enable");
         $(this).attr('contenteditable','false');
-        $(this).css('height','');
+        /*$(this).css('height','');*/
         $(this).parent().removeClass('active');
         saveState(false);
         CHANGE = true;
@@ -257,11 +335,17 @@ function NewNote(id, html, pos, secure, nclass, props) {
     
     if(nclass)
         $('#' + id).addClass(nclass);
+    
+    if(PROPS[id]['min'] == 1) {
+        $('#' + id).addClass('min');
+        $('#' + id + ' .postText').addClass('min');
+    }
+        
 }
 
 function ToggleCrypt(id) {
     if($('#' + id).attr('decrypt') == "1") {
-        var text = $('#' + id + ' .postText').text();
+        var text = $('#' + id + ' .postText').html();
         
         var pw = prompt("Encrypt - please enter passphrase", "");
 
@@ -275,10 +359,15 @@ function ToggleCrypt(id) {
     else {
         var pw = prompt("Decrypt - please enter passphrase", "");
         if(pw != null) {
-            var decrypted = CryptoJS.AES.decrypt($('#' + id + ' .postText').text(), pw);
-            $('#' + id + ' .postText').text(decrypted.toString(CryptoJS.enc.Utf8));
-            $('#' + id).attr('decrypt', '1');
-            $('#' + id + ' .postText').css('color', '#000');
+            try {
+                var decrypted = CryptoJS.AES.decrypt($('#' + id + ' .postText').text(), pw);
+                $('#' + id + ' .postText').html(decrypted.toString(CryptoJS.enc.Utf8));
+                $('#' + id).attr('decrypt', '1');
+                $('#' + id + ' .postText').css('color', '#000');
+            }
+            catch(e) {
+                alert("Failed to decrypt: " + e);
+            }
         }
     }
 }
@@ -312,9 +401,15 @@ function saveState(reTrigger){
     if(CHANGE) {
         var pData = {'scope': SCOPE, 'notes': []};
         for(var i = 0; i < $('.postIt').length; i++) {
-            pData['notes'][i] = ({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'secured': $($('.postIt')[i]).attr('dataSecure'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'props': $($('.postIt')[i]).attr('dataProps'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]});
+            if($($('.postIt')[i]).attr('decrypt') && $($('.postIt')[i]).attr('decrypt') == '1') {
+                // Contains decrypted data, don't transport
+                //console.log("Skip " + i)
+            }
+            else {
+                pData['notes'].push(({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'props': PROPS[$('.postIt')[i].id], 'secured': $($('.postIt')[i]).attr('dataSecure'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]}));
+            }
         }
-
+        
         $.ajax({
             type: "POST",
             url: '/notes/',

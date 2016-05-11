@@ -1,5 +1,5 @@
 import http.server
-#import SimpleHTTPServer #BaseHTTPServer
+from datetime import datetime
 import ssl
 import socketserver
 import pprint
@@ -9,13 +9,20 @@ import urllib.parse
 from json import JSONEncoder
 import sys
 
+"""
+from http.server import HTTPServer,SimpleHTTPRequestHandler
+from socketserver import BaseServer
+import ssl
+httpd = HTTPServer(('localhost', 1443), SimpleHTTPRequestHandler)
 
+ssl.verify_mode = ssl.CERT_NONE
+httpd.socket = ssl.wrap_socket (httpd.socket, keyfile='localhost.key.pem', certfile='localhost.cert.pem', server_side=True)
+httpd.serve_forever()
 """
 
 
 
 
-"""
 
 PORT = 8000
 DFILE = 'tknotes_data.json'
@@ -24,6 +31,15 @@ class MyEncoder(JSONEncoder):
     def default(self, o):
         return o.__dict__   
 
+class Event:
+    def __init__(self, key, value):
+        self.date = str(datetime.now())
+        self.key = key
+        self.value = value
+    
+    def __str__(self):
+        return self.date + " " + self.key + " " + self.value
+        
 class Note:
     def __init__(self, id):
         self.id = id;
@@ -39,6 +55,27 @@ class Note:
         
     def __str__(self):
         return str(self.id) + " " + str(self.scope) + " " + self.text
+
+    def updateFrom(self, note):
+        # Update with another note ("safe overwrite")
+        # Not touching the events
+        self.pos = note.pos
+        self.text = note.text
+        self.scope = note.scope
+        self.style = note.style
+        self.props = note.props
+        self.delete = note.delete
+        self.nclass = note.nclass
+        self.secured = note.secured
+        
+    def addEvent(self, key, value):
+        self.events.append(Event(key, value))
+        
+    def hasEvent(self, key):
+        for e in self.events:
+            if key == e.key:
+                return True
+        return False
         
 class Memory:
     notes = []
@@ -70,12 +107,13 @@ class Memory:
             n = Memory.notes[i]
             #print(str(n) + " vs " + str(note))
             if int(n.id) == int(note.id) and int(n.scope) == int(note.scope):
-                Memory.notes[i] = note
+                Memory.notes[i].updateFrom(note)
                 #print("Did update")
                 return True
-        #print("Did not find " + str(note))
-        #if len(Memory.notes) > 0:
-        #    print(" in " + str(Memory.notes[0]))
+        
+        if not note.hasEvent("CREATED"):
+            note.addEvent("CREATED", "")
+        
         Memory.notes.append(note)   
         return True        
             
