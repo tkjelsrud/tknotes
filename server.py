@@ -7,6 +7,7 @@ import socketserver
 import pprint
 import json
 import re
+import os
 import urllib.parse
 from json import JSONEncoder
 import sys
@@ -26,7 +27,7 @@ httpd.serve_forever()
 
 
 
-PORT = 80
+PORT = os.environ.get('PORT', 5000)
 DFILE = 'tknotes_data.json'
 
 class MyEncoder(JSONEncoder):
