@@ -1,3 +1,4 @@
+print("Hello world")
 import http.server
 from datetime import datetime
 import ssl
