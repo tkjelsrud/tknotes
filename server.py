@@ -29,7 +29,7 @@ httpd.serve_forever()
 
 
 
-PORT = os.environ.get('PORT', 5000)
+PORT = int(os.environ.get('PORT', 5000))
 DFILE = 'tknotes_data.json'
 
 class MyEncoder(JSONEncoder):
