@@ -1,4 +1,4 @@
-print("Hello world", os.environ.get('PORT'))
+
 import http.server
 #from BaseHTTPServer import BaseHTTPRequestHandler
 from datetime import datetime
@@ -11,6 +11,8 @@ import os
 import urllib.parse
 from json import JSONEncoder
 import sys
+
+print("Hello world", os.environ.get('PORT'))
 
 """
 from http.server import HTTPServer,SimpleHTTPRequestHandler
