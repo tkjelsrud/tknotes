@@ -280,7 +280,7 @@ function NewNote(id, html, pos, secure, nclass) {
             }
             CHANGE = true;
         })
-        .click(function(){
+        .click(function(event){
             // TODO: Stop drag/resize to trigger this
             //
             if ( $(this).is('.ui-draggable-dragging') ) {
