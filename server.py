@@ -1,4 +1,4 @@
-#print("Hello world")
+print("Hello world", os.environ.get('PORT'))
 import http.server
 #from BaseHTTPServer import BaseHTTPRequestHandler
 from datetime import datetime
