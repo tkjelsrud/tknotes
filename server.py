@@ -24,7 +24,7 @@ httpd.serve_forever()
 
 
 
-PORT = 8000
+PORT = 80
 DFILE = 'tknotes_data.json'
 
 class MyEncoder(JSONEncoder):
